@@ -191,23 +191,18 @@ function copyTexturePixels(screen_offset, texture_offset, tint) {
 
 function readInputs(delta_sec) {
     // update camera position based on inputs
-    var next_x, next_y, dir = 0, radius = 0.25;
+    var dir = 0, radius = 0.25;
     //walking and collision detection
     dir = KEYS['up'] || KEYS['down'];
     if (dir) {
         var speed = delta_sec * 5,
-            cos_a = dir * Math.cos(camera.angle),
-            sin_a = dir * Math.sin(camera.angle);
-        next_x = camera.x + (cos_a * speed);
-        next_y = camera.y + (sin_a * speed);
-        if (next_x + (radius * cos_a) >= 0 && next_x + (radius * cos_a) < map[0].length &&
-            !map[Math.floor(camera.y)][Math.floor(next_x + (radius * cos_a))]) {
+            cos_a = dir * Math.cos(camera.angle), sin_a = dir * Math.sin(camera.angle),
+            next_x = camera.x + (cos_a * speed), next_y = camera.y + (sin_a * speed),
+            radius_x = next_x + (radius * cos_a), radius_y = next_y + (radius * sin_a);
+        if (radius_x >= 0 && radius_x < map[0].length && !map[Math.floor(camera.y)][Math.floor(radius_x)])
             camera.x = next_x;
-        }
-        if (next_y + (radius * sin_a) >= 0 && next_y + (radius * sin_a) < map.length &&
-            !map[Math.floor(next_y + (radius * sin_a))][Math.floor(camera.x)]) {
+        if (radius_y >= 0 && radius_y < map.length && !map[Math.floor(radius_y)][Math.floor(camera.x)])
             camera.y = next_y;
-        }
     }
     //turning
     dir = KEYS['left'] || KEYS['right'];
