@@ -114,7 +114,7 @@ function cast(cell_x, cell_y, ray_angle, column) {
         //find nearest grid line y intercept and distance to it
         if (last_x != cell_x) { //check if need to recalc this one
             last_x = cell_x;
-            step_dx = Math.max(sign_cos_a, 0); //0 = left,bottom of cell, 1 = right,top of cell
+            step_dx = Math.max(sign_cos_a, 0); //0 = left,top of cell, 1 = right,bottom of cell
             y_intersection = (tan_a * (cell_x + step_dx)) + b; // y = m * x + b
             y_intersect_distance = Math.distance(cell_x + step_dx, y_intersection, camera.x, camera.y);
         }
