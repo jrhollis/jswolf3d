@@ -103,13 +103,13 @@ function cast(cell_x, cell_y, ray_angle, column) {
     var cos_a = Math.cos(ray_angle), sin_a = Math.sin(ray_angle), tan_a = sin_a / cos_a,
         sign_sin_a = Math.sign(sin_a), sign_cos_a = Math.sign(cos_a), 
         b = camera.y - (tan_a * camera.x), //b = y - (m * x) (solving for b)
-        door_tile, intersect_distance, side, wall_height, sprite_height, texture_coord, 
+        door_cell, intersect_distance, side, wall_height, sprite_height, texture_coord, 
         step_dx, step_dy, last_x, last_y,
         x_intersection, y_intersection, x_intersect_distance = Infinity, y_intersect_distance = Infinity,
         wall_distance, hits = [];
     // check for wall hits by solving for grid line intersections with ray
     while (true) {
-        door_tile = doors.get((cell_y * map[0].length) + cell_x); //for rendering door metal around doors (not the door itself)
+        door_cell = doors.get((cell_y * map[0].length) + cell_x); //for rendering door metal around doors (not the door itself)
         wall_distance = Infinity;
         //find nearest grid line y intercept and distance to it
         if (last_x != cell_x) { //check if need to recalc this one
@@ -144,7 +144,7 @@ function cast(cell_x, cell_y, ray_angle, column) {
             wall_distance = intersect_distance; //remember this for sprite hit optimization
             hits.push({
                 x: cell_x, y: cell_y, distance: intersect_distance,
-                texture_coord: Math.floor(64 * ((door_tile ? 14 : map[cell_y][cell_x]) - texture_coord)), // draw door metal if this is a door tile
+                texture_coord: Math.floor(64 * ((door_cell ? 14 : map[cell_y][cell_x]) - texture_coord)), // draw door metal if this is a door tile
                 texture_size: 64 / wall_height,
                 side: side, half_height: wall_height >> 1
             });
