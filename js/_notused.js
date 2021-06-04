@@ -1,3 +1,4 @@
+//floor casting code
 this.vp_ratio = this.vp_width / this.vp_height;
 
 this.ROW_DISTANCES = [];
