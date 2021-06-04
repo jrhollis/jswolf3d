@@ -7,4 +7,5 @@ try it out here:
 https://jrhollis.github.io/jswolf3d/
 
 Arrows / WASD to move
+
 Spacebar to operate doors
