@@ -5,3 +5,6 @@ A compact Wolfenstein 3d 2.5d rendering engine with sprites and doors. The goal 
 
 try it out here:
 https://jrhollis.github.io/jswolf3d/
+
+Arrows / WASD to move
+Spacebar to operate doors
