@@ -118,6 +118,7 @@ function cast(cell_x, cell_y, ray_angle, cos_a, sin_a, column) {
         wall_distance, hits = [];
     // check for wall hits by solving for grid line intersections with ray
     while (true) {
+        if (last_x == cell_x && last_y == cell_y) break; //unsolvable, straight on grid lines
         door_cell = doors.get((cell_y * map[0].length) + cell_x); //for rendering door metal around doors (not the door itself)
         wall_distance = Infinity;
         //find nearest grid line y intercept and distance to it
