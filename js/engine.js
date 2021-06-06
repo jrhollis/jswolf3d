@@ -1,16 +1,19 @@
-//load textures 
+//load textures - called after map data is loaded
 var TEXTURE = new Image(),
     texture_pixels;
-TEXTURE.onload = () => {
-    //get texture pixel data by drawing on a in-memory canvas
-    var texture_canvas = document.createElement('canvas');
-    texture_canvas.width = TEXTURE.width;
-    texture_canvas.height = TEXTURE.height;
-    var texture_context = texture_canvas.getContext('2d');
-    texture_context.drawImage(TEXTURE, 0, 0);
-    texture_pixels = new DataView(texture_context.getImageData(0, 0, TEXTURE.width, TEXTURE.height).data.buffer);
-    //start the game after textures are loaded
-    startGame();
+function loadTexture() {
+    TEXTURE.onload = () => {
+        //get texture pixel data by drawing on a in-memory canvas
+        var texture_canvas = document.createElement('canvas');
+        texture_canvas.width = TEXTURE.width;
+        texture_canvas.height = TEXTURE.height;
+        var texture_context = texture_canvas.getContext('2d');
+        texture_context.drawImage(TEXTURE, 0, 0);
+        texture_pixels = new DataView(texture_context.getImageData(0, 0, TEXTURE.width, TEXTURE.height).data.buffer);
+        //start the game after textures are loaded
+        startGame();
+    }
+    TEXTURE.src = 'res/wolftextures.png'; //load textures and start game onload callback
 }
 
 // set up input controls, up/down/left/right or w/a/s/d. spacebar for doors
@@ -41,6 +44,7 @@ var screen = document.getElementById('game'),
     screen_pixels = screen_context.getImageData(0, 0, screen.width, screen.height),
     screen_pixel_data = new DataView(screen_pixels.data.buffer);
 screen.half_height = screen.height / 2;
+screen.vp_ratio = screen.width / screen.height;
 
 // math shortcuts
 Math.PI_DIV_2 = Math.PI / 2;
@@ -54,7 +58,8 @@ Math.wrapRadians = function(radians) {
 //camera position
 var camera = { x: 4.5, y: 6.5, angle: 0 };
 //geometry lookup tables
-var RAY_ANGLES = [], FISH_EYE = [];
+var RAY_ANGLES = [], FISH_EYE = [], ROW_DISTANCES = [];
+var floor_casting = false;
 // map and map things
 var map, sprites = [], cast_sprites = [], doors = new Map(), active_doors = new Map();
 
@@ -64,6 +69,10 @@ function startGame() {
         var angle = Math.atan2(column, screen.width); // angle of ray through each column of screen pixels
         RAY_ANGLES.push(angle);
         FISH_EYE.push(Math.cos(angle));
+    }
+    //look up table for floor casting
+    for (var row = screen.half_height; row < screen.height; row++) {
+        ROW_DISTANCES.push((screen.half_height / (row - screen.half_height)) * screen.vp_ratio);
     }
     window.requestAnimationFrame((d)=>{update(d)}); //begin the game loop
 }
@@ -96,11 +105,11 @@ function loadMap(mapData) { //called with mapData loaded from res/map.js
             }
         }
     }
-    TEXTURE.src = 'res/wolftextures.png'; //load textures and start game onload callback
+    loadTexture();
 }
 
-function cast(cell_x, cell_y, ray_angle, column) {
-    var cos_a = Math.cos(ray_angle), sin_a = Math.sin(ray_angle), tan_a = sin_a / cos_a,
+function cast(cell_x, cell_y, ray_angle, cos_a, sin_a, column) {
+    var tan_a = sin_a / cos_a,
         sign_sin_a = Math.sign(sin_a), sign_cos_a = Math.sign(cos_a), 
         b = camera.y - (tan_a * camera.x), //b = y - (m * x) (solving for b)
         door_cell, intersect_distance, side, wall_height, sprite_height, texture_coord, 
@@ -277,13 +286,34 @@ function drawScreen() {
     // cast ray for each column of screen pixels and draw
     for (var column = 0; column < screen.width; column++) {
         var ray_angle = RAY_ANGLES[column] + camera.angle,
-            hits = cast(cell_x, cell_y, ray_angle, column);
-        //color in the floor and ceiling with solid colors
+            cos_a = Math.cos(ray_angle), sin_a = Math.sin(ray_angle)
+            hits = cast(cell_x, cell_y, ray_angle, cos_a, sin_a, column);
+        //draw floor / ceiling for this column
         for (var row = screen.half_height; row < screen.height; row++) {
             var floor_px_offset = ((row * screen.width) + column) << 2,
                 ceiling_px_offset = (((screen.height - row - 1) * screen.width) + column) << 2;
-            screen_pixel_data.setUint32(floor_px_offset, -9539986, true);  //fill floor color
-            screen_pixel_data.setUint32(ceiling_px_offset, -13158601, true); //fill ceiling color
+            if (!floor_casting) {
+                screen_pixel_data.setUint32(floor_px_offset, -9539986, true);  //fill floor color
+                screen_pixel_data.setUint32(ceiling_px_offset, -13158601, true); //fill ceiling color
+            } else {
+                var ray_length = ROW_DISTANCES[row - screen.half_height] / Math.sin(Math.PI_DIV_2 - RAY_ANGLES[column]),
+                    //where does this ray hit at that distance
+                    gx = camera.x + (ray_length * cos_a),
+                    gy = camera.y + (ray_length * sin_a);
+                if (!floor_casting || gx < 0 || gy < 0 || gx > map[0].length || gy > map.length) {
+                    //don't render floor outside of map bounds
+                    screen_pixel_data.setUint32(floor_px_offset, -9539986, true);  //fill floor color
+                    screen_pixel_data.setUint32(ceiling_px_offset, -13158601, true); //fill ceiling color
+                    continue;
+                }
+                //apply floor / ceiling textures
+                var tx = Math.floor((gx - Math.floor(gx)) * 64),
+                    ty = Math.floor((gy - Math.floor(gy)) * 64) * TEXTURE.width,
+                    floor_texture_offset = (ty + (3 * 64) + tx) << 2, //TODO: choose floor texture (map)
+                    ceiling_texture_offset = (ty + (6 * 64) + tx) << 2; //TODO: choose ceiling texture (map)
+                copyTexturePixels(floor_px_offset, floor_texture_offset);
+                copyTexturePixels(ceiling_px_offset, ceiling_texture_offset);
+            }
         }
         //draw ray hits
         for (var i = 0; i < hits.length; i++) {
