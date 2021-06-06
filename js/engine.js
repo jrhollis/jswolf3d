@@ -288,15 +288,15 @@ function drawScreen() {
         var ray_angle = RAY_ANGLES[column] + camera.angle,
             cos_a = Math.cos(ray_angle), sin_a = Math.sin(ray_angle)
             hits = cast(cell_x, cell_y, ray_angle, cos_a, sin_a, column);
-        //draw floor / ceiling for this column
+        //draw floor / ceiling for this column - draw from middle of screen up and down simultaneously
         for (var row = screen.half_height; row < screen.height; row++) {
             var floor_px_offset = ((row * screen.width) + column) << 2,
                 ceiling_px_offset = (((screen.height - row - 1) * screen.width) + column) << 2,
                 ray_length = ROW_DISTANCES[row - screen.half_height] / FISH_EYE[column],
                 //where does this ray hit at that distance and angle
                 fx = camera.x + (ray_length * cos_a), fy = camera.y + (ray_length * sin_a);
-            if (!floor_casting || fx < 0 || fy < 0 || fx > map[0].length || fy > map.length) {
-                //don't render floor outside of map bounds or if floor casting is off
+            if (!floor_casting || fx < 0 || fy < 0 || fx >= map[0].length || fy >= map.length) {
+                //don't render floor/ceiling textures outside of map bounds or at all if floor casting is off
                 screen_pixel_data.setUint32(floor_px_offset, -9539986, true);  //fill floor color
                 screen_pixel_data.setUint32(ceiling_px_offset, -13158601, true); //fill ceiling color
                 continue;
@@ -309,7 +309,7 @@ function drawScreen() {
             copyTexturePixels(floor_px_offset, floor_texture_offset);
             copyTexturePixels(ceiling_px_offset, ceiling_texture_offset);
         }
-        //draw ray hits
+        //draw ray hits with walls and sprites
         for (var i = 0; i < hits.length; i++) {
             //copy to pixel buffer - draw from middle of screen up and down simultaneously
             for (var y = 0; y < hits[i].half_height; y++) {
