@@ -72,7 +72,7 @@ function startGame() {
     }
     //look up table for floor casting
     for (var row = screen.half_height; row < screen.height; row++) {
-        ROW_DISTANCES.push((screen.half_height / (row - screen.half_height)) * screen.vp_ratio);
+        ROW_DISTANCES.push(screen.width / ((2 * row) - screen.height)); //((screen.half_height / (row - screen.half_height)) * screen.vp_ratio)
     }
     window.requestAnimationFrame((d)=>{update(d)}); //begin the game loop
 }
@@ -294,20 +294,20 @@ function drawScreen() {
                 ceiling_px_offset = (((screen.height - row - 1) * screen.width) + column) << 2,
                 ray_length = ROW_DISTANCES[row - screen.half_height] / FISH_EYE[column],
                 //where does this ray hit at that distance and angle
-                fx = camera.x + (ray_length * cos_a), fy = camera.y + (ray_length * sin_a);
-            if (!floor_casting || fx < 0 || fy < 0 || fx >= map[0].length || fy >= map.length) {
+                floor_x = camera.x + (ray_length * cos_a), floor_y = camera.y + (ray_length * sin_a);
+            if (!floor_casting || floor_x < 0 || floor_y < 0 || floor_x >= map[0].length || floor_y >= map.length) {
                 //don't render floor/ceiling textures outside of map bounds or at all if floor casting is off
                 screen_pixel_data.setUint32(floor_px_offset, -9539986, true);  //fill floor color
                 screen_pixel_data.setUint32(ceiling_px_offset, -13158601, true); //fill ceiling color
-                continue;
+            } else {
+                //apply floor / ceiling textures
+                var tx = Math.floor((floor_x - Math.floor(floor_x)) * 64),
+                    ty = Math.floor((floor_y - Math.floor(floor_y)) * 64) * TEXTURE.width,
+                    floor_texture_offset = (ty + (3 * 64) + tx) << 2, //TODO: choose floor texture (map)
+                    ceiling_texture_offset = (ty + (6 * 64) + tx) << 2; //TODO: choose ceiling texture (map)
+                copyTexturePixels(floor_px_offset, floor_texture_offset);
+                copyTexturePixels(ceiling_px_offset, ceiling_texture_offset);
             }
-            //apply floor / ceiling textures
-            var tx = Math.floor((fx - Math.floor(fx)) * 64),
-                ty = Math.floor((fy - Math.floor(fy)) * 64) * TEXTURE.width,
-                floor_texture_offset = (ty + (3 * 64) + tx) << 2, //TODO: choose floor texture (map)
-                ceiling_texture_offset = (ty + (6 * 64) + tx) << 2; //TODO: choose ceiling texture (map)
-            copyTexturePixels(floor_px_offset, floor_texture_offset);
-            copyTexturePixels(ceiling_px_offset, ceiling_texture_offset);
         }
         //draw ray hits with walls and sprites
         for (var i = 0; i < hits.length; i++) {
