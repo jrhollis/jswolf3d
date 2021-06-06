@@ -56,7 +56,7 @@ Math.wrapRadians = function(radians) {
     return radians;
 }
 //camera position
-var camera = { x: 4.5, y: 6.5, angle: 0 };
+var camera = { x: 4, y: 6, angle: 0 };
 //geometry lookup tables
 var RAY_ANGLES = [], FISH_EYE = [], ROW_DISTANCES = [];
 var floor_casting = false;
@@ -66,7 +66,7 @@ var map, sprites = [], cast_sprites = [], doors = new Map(), active_doors = new 
 function startGame() {
     //geometry look up tables- ray angle and fish eye correction for each pixel column of viewport 
     for (var column = -screen.width / 2; column < screen.width / 2; column++) {
-        var angle = Math.atan2(column, screen.width); // angle of ray through each column of screen pixels
+        var angle = Math.atan2(column + 0.5, screen.width); // angle of ray through each column of screen pixels
         RAY_ANGLES.push(angle);
         FISH_EYE.push(Math.cos(angle));
     }
