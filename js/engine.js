@@ -56,7 +56,7 @@ Math.wrapRadians = function(radians) {
     return radians;
 }
 //camera position
-var camera = { x: 4, y: 6, angle: 0 };
+var camera = { x: 4, y: 6, angle: Math.PI_DIV_2 };
 //geometry lookup tables
 var RAY_ANGLES = [], FISH_EYE = [], ROW_DISTANCES = [];
 var floor_casting = false;
@@ -66,7 +66,7 @@ var map, sprites = [], cast_sprites = [], doors = new Map(), active_doors = new 
 function startGame() {
     //geometry look up tables- ray angle and fish eye correction for each pixel column of viewport 
     for (var column = -screen.width / 2; column < screen.width / 2; column++) {
-        var angle = Math.atan2(column + 0.5, screen.width); // angle of ray through each column of screen pixels
+        var angle = Math.atan2(column + 0.5 , screen.width); // angle of ray through each column of screen pixels
         RAY_ANGLES.push(angle);
         FISH_EYE.push(Math.cos(angle));
     }
@@ -117,8 +117,7 @@ function cast(cell_x, cell_y, ray_angle, cos_a, sin_a, column) {
         x_intersection, y_intersection, x_intersect_distance = Infinity, y_intersect_distance = Infinity,
         wall_distance, hits = [];
     // check for wall hits by solving for grid line intersections with ray
-    while (true) {
-        if (last_x == cell_x && last_y == cell_y) break; //unsolvable, straight on grid lines
+    while (!(last_x == cell_x && last_y == cell_y)) { //run loop while line is solvable (not directly on an x grid line)
         door_cell = doors.get((cell_y * map[0].length) + cell_x); //for rendering door metal around doors (not the door itself)
         wall_distance = Infinity;
         //find nearest grid line y intercept and distance to it
