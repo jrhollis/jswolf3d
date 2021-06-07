@@ -56,7 +56,7 @@ Math.wrapRadians = function(radians) {
     return radians;
 }
 //camera position
-var camera = { x: 4, y: 6, angle: Math.PI_DIV_2 };
+var camera = { x: 4, y: 6, angle: 0 };
 //geometry lookup tables
 var RAY_ANGLES = [], FISH_EYE = [], ROW_DISTANCES = [];
 var floor_casting = false;
@@ -66,7 +66,7 @@ var map, sprites = [], cast_sprites = [], doors = new Map(), active_doors = new 
 function startGame() {
     //geometry look up tables- ray angle and fish eye correction for each pixel column of viewport 
     for (var column = -screen.width / 2; column < screen.width / 2; column++) {
-        var angle = Math.atan2(column + 0.5 , screen.width); // angle of ray through each column of screen pixels
+        var angle = Math.atan2(column , screen.width); // angle of ray through each column of screen pixels
         RAY_ANGLES.push(angle);
         FISH_EYE.push(Math.cos(angle));
     }
@@ -117,7 +117,8 @@ function cast(cell_x, cell_y, ray_angle, cos_a, sin_a, column) {
         x_intersection, y_intersection, x_intersect_distance = Infinity, y_intersect_distance = Infinity,
         wall_distance, hits = [];
     // check for wall hits by solving for grid line intersections with ray
-    while (!(last_x == cell_x && last_y == cell_y)) { //run loop while line is solvable (not directly on an x grid line)
+    // while (!(last_x == cell_x && last_y == cell_y)) { //loop while algorithm is solvable (not looking directly down an x or y grid line)
+    while (true) { //loop while algorithm is solvable (not looking directly down an x or y grid line)
         door_cell = doors.get((cell_y * map[0].length) + cell_x); //for rendering door metal around doors (not the door itself)
         wall_distance = Infinity;
         //find nearest grid line y intercept and distance to it
@@ -128,7 +129,7 @@ function cast(cell_x, cell_y, ray_angle, cos_a, sin_a, column) {
             y_intersect_distance = Math.distance(cell_x + step_dx, y_intersection, camera.x, camera.y);
         }
         //find nearest grid line x intercept and distance to it
-        if (last_y != cell_y) { //check if need to recalc this one
+        if (last_y != cell_y && tan_a) { //check if need to recalc this one (unsolvable if tan_a is zero)
             last_y = cell_y;
             step_dy = Math.max(sign_sin_a, 0);
             x_intersection = (cell_y + step_dy - b) / tan_a; // x = (y - b) / m
@@ -153,7 +154,7 @@ function cast(cell_x, cell_y, ray_angle, cos_a, sin_a, column) {
             wall_distance = intersect_distance; //remember this for sprite hit optimization
             hits.push({
                 x: cell_x, y: cell_y, distance: intersect_distance,
-                texture_coord: Math.floor(64 * ((door_cell ? 14 : map[cell_y][cell_x]) - texture_coord)), // draw door metal if this is a door tile
+                texture_coord: Math.floor(64 * ((door_cell ? 14 : map[cell_y][cell_x]) - Math.max(texture_coord, 0.000001))), // draw door metal if this is a door tile
                 texture_size: 64 / wall_height,
                 side: side, half_height: wall_height >> 1
             });
@@ -300,7 +301,7 @@ function drawScreen() {
                 screen_pixel_data.setUint32(floor_px_offset, -9539986, true);  //fill floor color
                 screen_pixel_data.setUint32(ceiling_px_offset, -13158601, true); //fill ceiling color
             } else {
-                //apply floor / ceiling textures
+                //apply floor / ceiling textures - better algo would be to calc apparent pixel area and average texture color over it
                 var tx = Math.floor((floor_x - Math.floor(floor_x)) * 64),
                     ty = Math.floor((floor_y - Math.floor(floor_y)) * 64) * TEXTURE.width,
                     floor_texture_offset = (ty + (3 * 64) + tx) << 2, //TODO: choose floor texture (map)
