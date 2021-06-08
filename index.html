@@ -2,9 +2,17 @@
 <html>
     <head>
         <title>Wolf Engine</title>
+        <style type="text/css">
+            #game {
+                width: 640px;
+                image-rendering: pixelated;
+                image-rendering: -moz-crisp-edges;
+                image-rendering: -webkit-crisp-edges;
+            }
+        </style>
     </head>
     <body>
-        <canvas style="width:640px" id="game" width="320" height="240"></canvas>
+        <canvas id="game" width="320" height="240"></canvas>
         <script type="text/javascript" src="js/engine.js"></script>
         <script type="text/javascript" src="res/map.js"></script>
         <p>

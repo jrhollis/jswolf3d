@@ -168,7 +168,7 @@ function cast(cell_x, cell_y, ray_angle, cos_a, sin_a, column) {
             a = ray_angle - sprite.angle_to_camera,
             //how to rotate the sprite (billboarded: camera.angle, E/W door: 0, N/S door -Math.PI_DIV_2)
             b = sprite.angle_to_camera - sprite.rotation,
-            c_ratio = sprite.distance_to_camera / Math.sin(Math.PI - a - b), // Math.sin(Math.PI_DIV_2 - ray_angle + sprite.rotation),
+            c_ratio = sprite.distance_to_camera / Math.sin(Math.PI - a - b), 
             texture_coord = Math.sin(a) * c_ratio;
         intersect_distance = (Math.sin(b) * c_ratio);
         //only keep texture coords between texture bounds (1 grid unit (-0.5 to 0.5)) or behind a wall, ignore it
