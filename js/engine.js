@@ -1,6 +1,5 @@
 //load textures - called after map data is loaded
-var TEXTURE = new Image(),
-    texture_pixels;
+var TEXTURE = new Image(), texture_image_data;
 function loadTexture() {
     TEXTURE.onload = () => {
         //get texture pixel data by drawing on a in-memory canvas
@@ -9,7 +8,7 @@ function loadTexture() {
         texture_canvas.height = TEXTURE.height;
         var texture_context = texture_canvas.getContext('2d');
         texture_context.drawImage(TEXTURE, 0, 0);
-        texture_pixels = new DataView(texture_context.getImageData(0, 0, TEXTURE.width, TEXTURE.height).data.buffer);
+        texture_image_data = texture_context.getImageData(0, 0, TEXTURE.width, TEXTURE.height).data;
         //start the game after textures are loaded
         startGame();
     }
@@ -42,7 +41,7 @@ function toggleKey(e, active) {
 var screen = document.getElementById('game'),
     screen_context = screen.getContext('2d', {alpha: false}),
     screen_pixels = screen_context.getImageData(0, 0, screen.width, screen.height),
-    screen_pixel_data = new DataView(screen_pixels.data.buffer);
+    screen_image_data = screen_pixels.data;
 screen.half_height = screen.height / 2;
 screen.vp_ratio = screen.width / screen.height;
 
@@ -56,7 +55,7 @@ Math.wrapRadians = function(radians) {
     return radians;
 }
 //camera position
-var camera = { x: 4, y: 6, angle: 0 };
+var camera = { x: 4, y: 6, angle: Math.PI_DIV_2 };
 //geometry lookup tables
 var RAY_ANGLES = [], FISH_EYE = [], ROW_DISTANCES = [];
 var floor_casting = false;
@@ -66,13 +65,13 @@ var map, sprites = [], cast_sprites = [], doors = new Map(), active_doors = new 
 function startGame() {
     //geometry look up tables- ray angle and fish eye correction for each pixel column of viewport 
     for (var column = -screen.width / 2; column < screen.width / 2; column++) {
-        var angle = Math.atan2(column + 0.5, screen.width); // angle of ray through each column of screen pixels
+        var angle = Math.atan2(column + 0.5, screen.height); // angle of ray through each column of screen pixels
         RAY_ANGLES.push(angle);
         FISH_EYE.push(Math.cos(angle));
     }
     //look up table for floor casting
     for (var row = screen.half_height; row < screen.height; row++) {
-        ROW_DISTANCES.push(screen.width / ((2 * row) - screen.height)); //((screen.half_height / (row - screen.half_height)) * screen.vp_ratio)
+        ROW_DISTANCES.push(screen.height / ((2 * row) - screen.height)); //((screen.half_height / (row - screen.half_height)) * screen.vp_ratio)
     }
     window.requestAnimationFrame((d)=>{update(d)}); //begin the game loop
 }
@@ -97,7 +96,8 @@ function loadMap(mapData) { //called with mapData loaded from res/map.js
                     Object.assign(sprite, {
                         key: key, origin_x: sprite.x, origin_y: sprite.y, map_x: x, map_y: y,
                         billboard: false, texture: 12, timer: 0, state: 0, //closed state
-                        rotation: (tile == SPRITE.DOOR_EW) ? 0 : -Math.PI_DIV_2, side: (tile == SPRITE.DOOR_EW)
+                        rotation: (tile == SPRITE.DOOR_EW) ? 0 : -Math.PI_DIV_2, 
+                        side: (tile == SPRITE.DOOR_EW)
                     });
                     doors.set(key, sprite); // remember this door
                 }
@@ -117,7 +117,6 @@ function cast(cell_x, cell_y, ray_angle, cos_a, sin_a, column) {
         x_intersection, y_intersection, x_intersect_distance = Infinity, y_intersect_distance = Infinity,
         wall_distance, hits = [];
     // check for wall hits by solving for grid line intersections with ray
-    // while (!(last_x == cell_x && last_y == cell_y)) { //loop while algorithm is solvable (not looking directly down an x or y grid line)
     while (true) { //loop while algorithm is solvable (not looking directly down an x or y grid line)
         door_cell = doors.get((cell_y * map[0].length) + cell_x); //for rendering door metal around doors (not the door itself)
         wall_distance = Infinity;
@@ -150,13 +149,14 @@ function cast(cell_x, cell_y, ray_angle, cos_a, sin_a, column) {
         }
         //is this grid square a rendered wall? if yes, no need to go on since any walls behind wouldn't be rendered
         if (map[cell_y][cell_x] > 0) {
-            wall_height = screen.width * (1 / (intersect_distance * FISH_EYE[column]));
+            wall_height = screen.height * (1 / (intersect_distance * FISH_EYE[column]));
             wall_distance = intersect_distance; //remember this for sprite hit optimization
             hits.push({
                 x: cell_x, y: cell_y, distance: intersect_distance,
                 texture_coord: Math.floor(64 * ((door_cell ? 14 : map[cell_y][cell_x]) - Math.max(texture_coord, 0.000001))), // draw door metal if this is a door tile
                 texture_size: 64 / wall_height,
-                side: side, half_height: wall_height >> 1
+                side: side, 
+                half_height: wall_height >> 1
             });
             break;
         }
@@ -173,12 +173,13 @@ function cast(cell_x, cell_y, ray_angle, cos_a, sin_a, column) {
         intersect_distance = (Math.sin(b) * c_ratio);
         //only keep texture coords between texture bounds (1 grid unit (-0.5 to 0.5)) or behind a wall, ignore it
         if (Math.abs(texture_coord) >= 0.4999 || intersect_distance >= wall_distance) continue; 
-        sprite_height = screen.width / (intersect_distance * FISH_EYE[column]);
+        sprite_height = screen.height / (intersect_distance * FISH_EYE[column]);
         hits.push({
             distance: intersect_distance,
             texture_coord: Math.floor(64 * (sprite.texture + texture_coord + 0.5)),
             texture_size: 64 / sprite_height, 
-            side: sprite.side, half_height: sprite_height >> 1 //half wall height
+            side: sprite.side, 
+            half_height: sprite_height >> 1 //half wall height
         });
     }
     //sort all ray hits by distance, farthest to nearest
@@ -186,17 +187,10 @@ function cast(cell_x, cell_y, ray_angle, cos_a, sin_a, column) {
 }
 
 function copyTexturePixels(screen_offset, texture_offset, tint) {
-    var texture_alpha = texture_pixels.getUint8(texture_offset + 3, false) & 255;
-    if (!texture_alpha) return; //don't copy over transparent pixels
-    var tx = texture_pixels.getUint32(texture_offset, true);
-    if (tint) {
-        //darken the color
-        var r = ~~((tx % 256) * 0.60),
-            g = ~~(((tx >>> 8) % 256) * 0.60),
-            b = ~~(((tx >>> 16) % 256) * 0.60);
-        tx = (255 << 24) + (b << 16) + (g << 8) + r;
+    if (!texture_image_data[texture_offset + 3]) return; //invisible pixel, return
+    for (var i = 0; i < 3; i++) {
+        screen_image_data[screen_offset + i] = texture_image_data[texture_offset + i] >> tint;
     }
-    screen_pixel_data.setUint32(screen_offset, tx, true);
 }
 
 function readInputs(delta_sec) {
@@ -298,8 +292,12 @@ function drawScreen() {
                 floor_x = camera.x + (ray_length * cos_a), floor_y = camera.y + (ray_length * sin_a);
             if (!floor_casting || floor_x < 0 || floor_y < 0 || floor_x >= map[0].length || floor_y >= map.length) {
                 //don't render floor/ceiling textures outside of map bounds or at all if floor casting is off
-                screen_pixel_data.setUint32(floor_px_offset, -9539986, true);  //fill floor color
-                screen_pixel_data.setUint32(ceiling_px_offset, -13158601, true); //fill ceiling color
+                for (var i = 0; i < 3; i++) {
+                    screen_image_data[floor_px_offset + i] = 110; //light gray
+                    screen_image_data[ceiling_px_offset + i] = 55; //dark gray
+                }
+                screen_image_data[floor_px_offset + 3] = 255; //opaque
+                screen_image_data[ceiling_px_offset + 3] = 255;
             } else {
                 //apply floor / ceiling textures - better algo would be to calc apparent pixel area and average texture color over it
                 var tx = Math.floor((floor_x - Math.floor(floor_x)) * 64),
@@ -330,14 +328,16 @@ function drawScreen() {
     screen_context.putImageData(screen_pixels, 0, 0);
 }
 // game loop
-var last_time = 0;
+var last_time = 0, fpsInterval = 1000 / 60;
 function update(time) {
     var delta = time - last_time,
         delta_sec = delta / 1000;
-    readInputs(delta_sec);
-    updateDoors(delta_sec);
-    updateSprites(delta_sec);
-    drawScreen();
-    last_time = time;
+    if (delta > fpsInterval) {
+        readInputs(delta_sec);
+        updateDoors(delta_sec);
+        updateSprites(delta_sec);
+        drawScreen();
+        last_time = time;
+    }
     window.requestAnimationFrame((d)=>{update(d)}); //continue looping
 }
